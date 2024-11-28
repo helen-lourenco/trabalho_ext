@@ -1,0 +1,359 @@
+---
+title: "Projeto Integrador - Disciplina CE092"
+author: "Helen Lourenço e Vitor Kroeff"
+format: 
+  revealjs:
+    width: 1600
+    height: 900
+    self-contained: false
+    incremental: false
+    footer: "Extensões de Modelos de Regressão"
+    theme: ["C:\\Users\\helen\\OneDrive\\Área de Trabalho\\Faculdade\\Extensões\\custom.scss"]
+    slide-number: c/t
+    show-slide-number: all
+    hash-type: number
+    preview-links: false
+---
+
+```{r echo = F, warning = F, message = F}
+require("AER")
+require("mgcv")
+require("knitr")
+require("dplyr")
+require("kableExtra")
+require("corrplot")
+require("ggplot2")
+require("gridExtra")
+require("gratia")
+require("gamlss")
+require(rpart)
+require(ggeffects)
+require(visreg)
+require(faraway)
+require(rpart.plot)
+require(pROC)
+require(party)
+require(partykit)
+require(mlbench)
+require(vip)
+require(GGally)
+```
+
+## Dados
+
+- Base de dados *Guns* | Pacote *AER*
+
+- Informações referentes à violência e ao uso de armas de fogo em 51 estados americanos.
+
+- Período 1977-1999.
+
+- *"More Guns, Less Crime?"*
+
+## Variáveis
+
+```{r, echo=FALSE, out.width="90%", fig.align='center'}
+variaveis <- c(
+  state = "Fator indicando o estado",
+  year = "Fator indicando o ano",
+  violent = "Número de crimes violentos (por 100 mil habitantes)",
+  murder = "Número de assassinatos (por 100 mil habitantes)",
+  robbery = "Número de roubos (por 100 mil habitantes)",
+  prisoners = "Número de presos no ano anterior (por 100 mil habitantes)",
+  afam = "Proporção de pessoas afro-americanas (entre 10 e 64 anos)",
+  cauc = "Proporção de pessoas caucasianas (entre 10 e 64 anos)",
+  male = "Proporção de pessoas do sexo masculino (entre 10 e 29 anos)",
+  population = "População (em milhões de habitantes)",
+  income = "Renda per capita (em USD)",
+  density = "Densidade populacional",
+  law = "Fator: O estado tinha uma lei de posse de armas naquele ano?"
+)
+
+knitr::kable(variaveis, format = 'html', col.names = c("Variável", "Descrição")) %>% kable_styling(full_width = T, font_size = 30)
+```
+
+## Análise Descritiva
+
+```{r echo = F, warning = F, message = F, fig.height=4}
+data("Guns")
+Guns$year  <- as.factor(Guns$year)
+Guns$state <- as.factor(Guns$state)
+Guns$law   <- as.factor(Guns$law)
+
+par(mfrow = c(1,3))
+boxplot(Guns$violent ~ Guns$law, xlab = "Porte Legalizado", ylab = "Violência", ylim = c(0,3000))
+boxplot(Guns$robbery  ~ Guns$law, xlab = "Porte Legalizado", ylab = "Roubo", ylim = c(0,2000))
+boxplot(Guns$murder  ~ Guns$law, xlab = "Porte Legalizado", ylab = "Assassinato", ylim = c(0,100))
+```
+
+## Análise Descritiva 
+
+- Matriz de Correlações
+
+```{r echo = F, warning = F, message = F, fig.height=8, fig.align='center'}
+corrplot(cor(Guns %>% select(-c(state, year, law))), 
+         method = "circle",
+         tl.col = "black",
+         addCoef.col = "white",
+         number.cex = 1.2,
+         tl.cex = 1.2,
+         cl.cex = 1.2)
+```
+
+## Análise Descritiva
+
+- Número de crimes violentos cometidos por ano (por 100 mil habitantes)
+
+```{r echo = F, warning = F, message = F, fig.width=15, fig.height=6, fig.align='center'}
+boxplot(Guns$violent ~ Guns$year, xlab = "Ano", ylab = "Violência", ylim = c(0,3000))
+```
+
+## Análise Descritiva
+
+- Quantidade média de crimes violentos cometidos por estado (por 100 mil habitantes)
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+Guns %>% 
+    group_by(state) %>% 
+    summarise(media = mean(violent)) %>% 
+    slice_max(order_by = media, n = 25) %>% 
+    ggplot(aes(y = reorder(state, media), x = media)) +
+    geom_bar(stat = 'identity', fill = 'red4') +
+    labs(
+        x = "Média", 
+        y = "Estado"
+    ) +
+    theme_minimal()  
+```
+
+## Seleção de Variáveis {.smaller}
+
+- **Variável resposta**
+
+Violência (número de crimes violentos)
+
+- **Variáveis explicativas**
+
+Número de roubos
+
+Número de presos no ano anterior
+
+Renda per capita
+
+Densidade da população
+
+Porte de armas legalizado (sim/não)
+
+Distrito de Colúmbia (sim/não)
+
+## Seleção de Variáveis
+
+- Distribuição da variável resposta
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+hist(Guns$violent, xlim = c(0,3000), ylim = c(0,400), xlab = "Violência", ylab = "Frequência", main = "")
+```
+
+## Seleção de Variáveis
+
+- Relação com a variável resposta
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+Guns <- Guns %>%
+  mutate(law = ifelse(law == "yes", 1, 0), state_columbia = ifelse(state == "District of Columbia", 1, 0))
+
+Guns$law <- as.factor(Guns$law)
+Guns$state_columbia <- as.factor(Guns$state_columbia)
+
+par(mfrow = c(2,3))
+plot(Guns$violent ~ Guns$robbery, ylim = c(0,3000), ylab = "Violência", xlab = "Roubo")
+plot(Guns$violent ~ Guns$prisoners, ylim = c(0,3000), ylab = "Violência", xlab = "Presos")
+plot(Guns$violent ~ Guns$income, ylim = c(0,3000), ylab = "Violência", xlab = "Renda Per Capita")
+plot(Guns$violent ~ Guns$density, ylim = c(0,3000), ylab = "Violência", xlab = "Densidade Populacional")
+boxplot(Guns$violent ~ Guns$law, ylim = c(0,3000), ylab = "Violência", xlab = "Porte Legalizado")
+boxplot(Guns$violent ~ Guns$state_columbia, ylim = c(0,3000), ylab = "Violência", xlab = "Distrito de Colúmbia")
+```
+
+## Ajuste do Modelo {.smaller}
+
+**Ajuste 1: Modelo linear**
+
+```{r echo = T, warning = F, message = F, fig.align='center'}
+mod_gam1 <- gam(violent ~ robbery + prisoners + income + density + law + state_columbia, data = Guns, family = gaussian(link = "identity"))
+```
+
+$$violent/x \sim N(\mu_x, \sigma^2)$$
+
+$$\mu_x = \beta_0 + \beta_1\cdot law + \beta_2 \cdot columbia + \beta_3 \cdot robbery + \beta_4 \cdot prisoners + \beta_5 \cdot income + \beta_6 \cdot density$$
+
+**Ajuste 2: Resposta Gamma**
+
+```{r echo = T, warning = F, message = F, fig.align='center'}
+mod_gam2 <- gam(violent ~ robbery + prisoners + income + density + law + state_columbia, data = Guns, family = Gamma(link = "inverse"))
+```
+
+$$violent/x \sim Gamma(\mu_x, \phi)$$
+
+$$\mu_x^{-1} = \beta_0 + \beta_1\cdot law + \beta_2 \cdot columbia + \beta_3 \cdot robbery + \beta_4 \cdot prisoners + \beta_5 \cdot income + \beta_6 \cdot density$$
+
+## Análise de Resíduos
+
+Ajuste 1: Modelo linear
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+par(mfrow = c(2,2))
+
+appraise(mod_gam1)
+```
+
+## Análise de Resíduos
+
+Ajuste 2: Resposta Gamma
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+par(mfrow = c(2,2))
+
+appraise(mod_gam2)
+```
+
+## Novo ajuste do Modelo {.smaller}
+
+**Ajuste 3: Resposta Gamma com termos não paramétricos para *robbery*, *prisoners*, *income* e *density* **
+
+$$\mu_x^{-1} = \beta_0 + \beta_1\cdot law + \beta_2 \cdot columbia + s(robbery) + s(prisoners) + s(income) + s(density)$$
+
+```{r echo = T, warning = F, message = F, fig.align='center'}
+mod_gam3 <- gam(violent ~ s(robbery) + s(prisoners) + s(income) + s(density) + law + state_columbia, family = Gamma(link = "inverse"), data = Guns)
+```
+
+**Ajuste 4: Interação entre *robbery* e *prisoners*, e *income* e *density* **
+
+$$\mu_x^{-1} = \beta_0 + \beta_1\cdot law + \beta_2 \cdot columbia + s(robbery,prisoners) + s(income,density)$$
+
+```{r echo = T, warning = F, message = F, fig.align='center'}
+mod_gam4 <- gam(violent ~ te(robbery,prisoners) + te(income,density) + law + state_columbia, family = Gamma(link = "inverse"), data = Guns)
+```
+
+## Análise de Resíduos
+
+Ajuste 3: Termos não paramétricos para *robbery*, *prisoners*, *income* e *density*
+
+```{r echo = F, warning = F, message = F, fig.align='center', fig.height=4}
+par(mfrow = c(2,2))
+
+appraise(mod_gam3)
+```
+
+## Descrição do Ajuste 
+
+<center>
+
+![](summary_mod3.png)
+
+</center>
+
+## Análise de Resíduos
+
+Ajuste 4: Interação entre *robbery* e *prisoners*, e *income* e *density*
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+par(mfrow = c(2,2))
+
+appraise(mod_gam4)
+```
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+AIC(mod_gam2, mod_gam3, mod_gam4)
+```
+
+## Descrição do Ajuste 
+
+<center>
+
+![](summary_mod_gam4.png)
+
+</center>
+
+## Novo Ajuste do Modelo {.smaller}
+
+Modelo generalizado aditivo para locação, escala e forma
+
+**Estimação de $\phi$**
+
+$$log(\mu_x) = \beta_{10} + \beta_{11} \cdot law + \beta_{12} \cdot columbia + s_{11}(robbery) + s_{12}(prisoners) + s_{13}(income) + s_{14}(density)$$
+
+$$log(\phi_x) = \beta_{20} + \beta_{21} \cdot law$$
+
+```{r echo = T, warning = F, message = F, fig.align='center'}
+mod_gamlss <- gamlss(violent  ~  pb(robbery) + pb(prisoners) + pb(income) + pb(density) + law + state_columbia, 
+                     sigma.fo =~ law,
+                     family = GA, data = Guns, method = mixed(1,100), trace = F)
+```
+
+## Análise de Resíduos
+
+Ajuste 5: Estimação de $\phi$
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+par(mfrow=c(1,2))
+r<-resid(mod_gamlss)
+f<-fitted(mod_gamlss)
+plot(f,r, xlim = c(100,1450), las=1, xlab = 'Valores Ajustados', ylab = 'Resíduos')
+qqnorm(r, las = 1)
+qqline(r, las = 2)
+```
+
+## Efeitos Ajustados
+
+- Parâmetro $\mu$
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+term.plot(mod_gamlss, pages = 1, ask = FALSE, what = 'mu', las = 1, 
+          cex = 2)
+```
+
+## Efeitos Ajustados
+
+- Parâmetro $\phi$
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+term.plot(mod_gamlss, pages = 1, ask = FALSE, what = 'sigma', las = 1, 
+          cex = 2)
+```
+
+## Árvore de Regressão
+
+```{r echo = F, warning = F, message = F, fig.align='center', fig.dim=c(14,6)}
+tree_1 <- rpart(violent ~ prisoners + income + density + law + state_columbia + robbery,
+          data = Guns)
+
+rpart.plot(tree_1)
+```
+
+## Árvore de Regressão
+
+Custo-complexidade
+
+```{r echo = F, warning = F, message = F, fig.align='center'}
+plotcp(tree_1)
+```
+
+## Árvore de Regressão
+
+```{r echo = F, warning = F, message = F, fig.align='center', fig.dim=c(14,6)}
+tree_2<- prune(tree_1, cp = 0.011)
+
+tree_2_grafico <- as.party(tree_2)
+plot(tree_2_grafico)
+```
+
+## Árvore de Regressão
+
+Importância das variáveis
+
+```{r echo = F, warning = F, message = F, fig.align='center', fig.dim=c(14,6)}
+vip::vip(tree_2)
+```
+
+## Conclusão
+
+
