@@ -8,7 +8,7 @@ format:
     self-contained: false
     incremental: false
     footer: "Extensões de Modelos de Regressão"
-    theme: ["custom.scss"]
+    theme: ["custom.scss"] # NOTA: Substituí o caminho do arquivo.
     slide-number: c/t
     show-slide-number: all
     hash-type: number
@@ -360,11 +360,11 @@ vip::vip(tree_2)
 
 ## Conclusão
 
-Com base nos bla bla bla
+O modelo que melhor se ajusta aos dados neste contexto foi o modelo **Gamma**, com interação entre as variáveis **robbery** e **prisoners**, e entre **income** e **density** (`mod_gam4`).
 
-- ponto 1
-- ponto 2
-- ponto 3
+- Tanto no modelo **Gamma** quanto na **árvore de regressão**, observamos que a variável **robbery** está fortemente relacionada ao número de crimes violentos.
+- Embora as variáveis **law** e **state_columbia** não sejam significativas a um nível de 5%, elas contribuem para um modelo com menor **AIC**.
+- O modelo **mod_gam4** é mais interpretável em comparação com o ajuste realizado pelo modelo **GAMLSS**.
 
 
 
