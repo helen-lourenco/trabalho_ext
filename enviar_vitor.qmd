@@ -8,7 +8,7 @@ format:
     self-contained: false
     incremental: false
     footer: "Extensões de Modelos de Regressão"
-    theme: ["C:\\Users\\helen\\OneDrive\\Área de Trabalho\\Faculdade\\Extensões\\custom.scss"]
+    theme: ["custom.scss"]
     slide-number: c/t
     show-slide-number: all
     hash-type: number
@@ -16,16 +16,16 @@ format:
 ---
 
 ```{r echo = F, warning = F, message = F}
-require("AER")
-require("mgcv")
-require("knitr")
-require("dplyr")
-require("kableExtra")
-require("corrplot")
-require("ggplot2")
-require("gridExtra")
-require("gratia")
-require("gamlss")
+require(AER)
+require(mgcv)
+require(knitr)
+require(dplyr)
+require(kableExtra)
+require(corrplot)
+require(ggplot2)
+require(gridExtra)
+require(gratia)
+require(gamlss)
 require(rpart)
 require(ggeffects)
 require(visreg)
@@ -52,23 +52,27 @@ require(GGally)
 ## Variáveis
 
 ```{r, echo=FALSE, out.width="90%", fig.align='center'}
-variaveis <- c(
-  state = "Fator indicando o estado",
-  year = "Fator indicando o ano",
-  violent = "Número de crimes violentos (por 100 mil habitantes)",
-  murder = "Número de assassinatos (por 100 mil habitantes)",
-  robbery = "Número de roubos (por 100 mil habitantes)",
-  prisoners = "Número de presos no ano anterior (por 100 mil habitantes)",
-  afam = "Proporção de pessoas afro-americanas (entre 10 e 64 anos)",
-  cauc = "Proporção de pessoas caucasianas (entre 10 e 64 anos)",
-  male = "Proporção de pessoas do sexo masculino (entre 10 e 29 anos)",
-  population = "População (em milhões de habitantes)",
-  income = "Renda per capita (em USD)",
-  density = "Densidade populacional",
-  law = "Fator: O estado tinha uma lei de posse de armas naquele ano?"
+descricao <- c(
+  "Fator indicando o estado",
+  "Fator indicando o ano",
+  "Número de crimes violentos (por 100 mil habitantes)",
+  "Número de assassinatos (por 100 mil habitantes)",
+  "Número de roubos (por 100 mil habitantes)",
+  "Número de presos no ano anterior (por 100 mil habitantes)",
+  "Proporção de pessoas afro-americanas (entre 10 e 64 anos)",
+  "Proporção de pessoas caucasianas (entre 10 e 64 anos)",
+  "Proporção de pessoas do sexo masculino (entre 10 e 29 anos)",
+  "População (em milhões de habitantes)",
+  "Renda per capita (em USD)",
+  "Densidade populacional",
+  "Fator: O estado tinha uma lei de posse de armas naquele ano?"
 )
 
-knitr::kable(variaveis, format = 'html', col.names = c("Variável", "Descrição")) %>% kable_styling(full_width = T, font_size = 30)
+nomes <- c('state', 'year', 'violent', 'murder',
+           'robbery', 'prisoners', 'afam', 'cauc',
+           'male','population', 'income', 'density', 'law')
+
+knitr::kable(data.frame('Variável' = nomes, 'Descrição'= descricao), format = 'html') %>% kable_styling(full_width = T, font_size = 30)
 ```
 
 ## Análise Descritiva
@@ -355,5 +359,12 @@ vip::vip(tree_2)
 ```
 
 ## Conclusão
+
+Com base nos bla bla bla
+
+- ponto 1
+- ponto 2
+- ponto 3
+
 
 
